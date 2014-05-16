@@ -1,0 +1,165 @@
+<html>
+<head>
+
+    <title>LARAe.iMinds</title>
+
+
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+
+    <link type="text/css" rel="stylesheet" href="/LARAe/static/javascripts/3rdParty/jquery-dropdown/jquery.dropdown.css" />
+    <script type="text/javascript" src="/LARAe/static/javascripts/3rdParty/jquery-dropdown/jquery.dropdown.js"></script>
+    <script type="text/javascript" src="/LARAe/static/javascripts/3rdParty/crossfilter.js"></script>
+
+
+
+    <script type="text/javascript">
+        var verbs = <%- JSON.stringify(verbs) %>;
+        var contexts = <%- JSON.stringify(contexts) %>;
+        var data = <%-  JSON.stringify(data) %>;
+        var targetsByContext = <%- JSON.stringify(targetsByContext) %>;
+
+        //hardcoding a bunch of data as we don't get this from the LRS yet!
+        <% var days = {
+                    "http://orw.iminds.be/theory/idea-opportunity":{day:0,dayName:"Prepare", name:"From Idea to Opportunity", context:"http://orw.iminds.be/theory/idea-opportunity"},
+                    "http://orw.iminds.be/task/spinbrush-case":{day:0,dayName:"Prepare",name:"The Spinbrush Case",context:"http://orw.iminds.be/task/spinbrush-case"},
+                    "http://orw.iminds.be/theory/research-canvas":{day:0,dayName:"Prepare",name:"The Research Canvas",context:"http://orw.iminds.be/theory/research-canvas"},
+                    "http://orw.iminds.be/task/create-research-canvas":{day:0,dayName:"Prepare",name:"Create a Research Canvas",context:"http://orw.iminds.be/task/create-research-canvas"},
+
+                    "http://orw.iminds.be/live_session/research-canvas-workshop":{day:1,dayName:"Day 1",name:"Research Canvas Workshop",context:"http://orw.iminds.be/live_session/research-canvas-workshop"},
+                    "http://orw.iminds.be/live_session/four-steps-addestino":{day:1,dayName:"Day 1",name:"The Four Steps by Addestino",context:"http://orw.iminds.be/live_session/four-steps-addestino"},
+                    "http://orw.iminds.be/live_session/four-steps-practice":{day:1,dayName:"Day 1",name:"Four Steps in Practice",context:"http://orw.iminds.be/live_session/four-steps-practice"},
+
+                    "http://orw.iminds.be/theory/value-proposition-designer":{day:2,dayName:"Day 2",name:"The Value Proposition Designer (theory)",context:"http://orw.iminds.be/theory/value-proposition-designer"},
+                    "http://orw.iminds.be/live_session/value-proposition-designer":{day:2,dayName:"Day 2",name:"The Value Proposition Designer (live session)",context:"http://orw.iminds.be/live_session/value-proposition-designer"},
+                    "http://orw.iminds.be/live_session/create-value-proposition":{day:2,dayName:"Day 2",name:"Create a Value Proposition.",context:"http://orw.iminds.be/live_session/create-value-proposition"},
+        }
+
+        ;
+        %>
+        var days = <%- JSON.stringify(days) %>;
+
+    </script>
+    <script type="text/javascript" src="/LARAe/static/javascripts/iMinds.js"></script>
+    <link rel="stylesheet" href="/LARAe/static/stylesheets/style_iMinds.css">
+</head>
+<body  id="mainBody">
+<div id="titleField">
+    <img id="wespot_logo" src="/LARAe/static/images/logo.png"/>
+    <span id="wespot_title">Learning Analytics Reflection & Awareness environment</span>
+    <span id="title">LARAe</span><span id="subtitle">.iMinds</span>
+    <!--<div id="subsections">
+        <ul>
+            <li class="title_subsection active">User Overview</li>
+        </ul>
+    </div>-->
+    <div id="user">
+
+    </div>
+</div>
+<div id="menu">
+    Show user:
+    <select  style="width:100px;" onChange="filterUsers(this.value);">
+        <option value="all">All</option>
+        <% for(var userKey in data) {%>
+        <option value="<%-userKey%>"><%-userKey%></option>
+        <%}%>
+    </select>
+
+    Show day:
+    <select id="daySelect" style="width:100px;" onChange="filterModules(this.value);">
+        <option value="all">All</option>
+        <%
+        var usedDays = [];
+        for(var day in days) {
+            if(usedDays.indexOf(days[day].day) < 0){
+        %>
+        <option value="<%-days[day].day%>"><%-days[day].dayName%></option>
+        <%
+                usedDays.push(days[day].day);
+            }
+
+        }%>
+    </select>
+    <table id="legend">
+        <tr>
+            <td><svg style="vertical-align: bottom" width="16" height="16"><circle cx="8" cy="8" r="3" class="eventSquare outline_circle_color1"/></svg> 0</td>
+            <td><svg style="vertical-align: bottom" width="16" height="16"><circle cx="8" cy="8" r="3" class="eventSquare circle_color1"/></svg> 1</td>
+            <td><svg style="vertical-align: bottom" width="16" height="16"><circle cx="8" cy="8" r="6" class="eventSquare circle_color1"/></svg> 2-4</td>
+            <td><svg style="vertical-align: bottom" width="16" height="16"><circle cx="8" cy="8" r="10" class="eventSquare circle_color1"/></svg> > 4</td>
+        </tr>
+    </table>
+</div>
+<div id="leftInterface">
+    <div id="userList" class="scrollableView">
+        <h2 class="module"">Overview</h2>
+        <!-- start loop over context -->
+
+
+       <!-- <table class="module"  id="phases" >-->
+            <table class="module"  id="userdata">
+            <tr >
+                <th class="title_student" onClick='javascript:sortBy("name");'>Name</th>
+
+                <!-- start loop over titles for each target -->
+                <%
+                var i = 0;
+                for(var contextKey in days)
+                {
+                    var displayName = contextKey;
+                    var day = -1;
+                    if (days[contextKey] != undefined)
+                    {
+                        displayName = days[contextKey].name;
+                        day = days[contextKey].day
+                    }
+
+
+                %>
+                    <th class="color<%= i %> title_phase<%=contextKey%> hideable" day="<%= day %>" onClick='javascript:sortBy("<%=contextKey%>");'><%- displayName %></th>
+                <%
+                    i++;
+                };
+                %>
+                <th class="color<%= -1 %> title_phasenocontext hideable" day="-1" onClick='javascript:sortBy("nocontext");'>no context</th>
+            </tr>
+        </table>
+
+
+    </div>
+</div>
+
+
+
+
+<div id="rightInterface">
+    <div id="realContent" class="scrollableView">
+        <div id="eventData">
+        </div>
+    </div>
+</div>
+
+
+<script type="application/javascript">
+    for(var userKey in data)
+    {
+        for(var contextKey in data[userKey])
+        {
+                var dataToDraw = data[userKey][contextKey];
+                if(dataToDraw == undefined)
+                    dataToDraw = [];
+                drawPhase(dataToDraw,userKey,contextKey);
+        }
+    }
+
+    sortBy("name");
+    $("#daySelect").val(0);
+    filterModules(0);
+
+</script>
+
+
+
+</body>
+</html>
+
